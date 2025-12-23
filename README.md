@@ -31,7 +31,7 @@ node index.js
 ## Running Automatically with Task Scheduler (No Popup Window)
 
 1. Locate the VBScript file in the repo and ensure the path matches where you cloned the project.
-2. Open Task Scheduler:
+2. Open Task Scheduler as Administrator:
     * Press Win + R, type taskschd.msc, and press Enter.
 3. Create a new task:
     * General: Give it a name, e.g., Workday Grade Checker.
