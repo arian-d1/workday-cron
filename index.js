@@ -172,8 +172,6 @@ async function main() {
   }
 }
 
-// (5 MINS) (EVERY HR) (EVERY DAY OF MONTH) (EVERY MONTH) (EVERY DAY OF WEEK)
-logInfo(`Scheduler started at ${new Date().toLocaleTimeString()}`);
 // Uncomment this to local run the cron as a script
 // cron.schedule("*/5 * * * *", async () => {
 //   logInfo("Running Workday grade check...");
@@ -181,3 +179,27 @@ logInfo(`Scheduler started at ${new Date().toLocaleTimeString()}`);
 // });
 
 await main();
+
+// (5 MINS) (EVERY HR) (EVERY DAY OF MONTH) (EVERY MONTH) (EVERY DAY OF WEEK)
+logInfo(`Scheduler started at ${new Date().toLocaleTimeString()}`);
+
+// Uncomment this to run the cron schedule locally
+// cron.schedule("*/5 * * * *", async () => {
+//   logInfo("Running Workday grade check...");
+//   try {
+//       await main();
+//   } catch (err) {
+//       logError(`CRON execution failed: ${err.message}`);
+//       await sendEmail("Workday Grade Checker ERROR", `Error details:\n${err.stack}`);
+//   }
+// });
+
+try {
+    await main();
+} catch (err) {
+    logError(`Execution failed: ${err.message}`);
+    await sendEmail(
+        "Workday Grade Checker ERROR",
+        `An error occurred during execution:\n\n${err.stack}`
+    );
+}
