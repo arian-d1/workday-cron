@@ -60,7 +60,7 @@ async function clickButton(page, buttonID, description = "") {
 
 async function main() {
   const browser = await puppeteer.launch({
-    headless: true,
+    headless: fs.existsSync(COOKIES_FILE),
     userDataDir: SESSION_DIR,
     defaultViewport: null,
   });
@@ -122,7 +122,6 @@ async function main() {
       const oldGrades = csvToArray(oldCSV);
       const oldMap = new Map();
       oldGrades.forEach((row) => oldMap.set(row[0], row)); // store as array [Course, Term, Credits, Grade]
-      logInfo(oldGrades);
       grades.forEach((row) => {
         const key = row[0]; // Course code
         const newGrade = row[3]; // New grade
@@ -131,8 +130,6 @@ async function main() {
           changes.push(
             `NEW COURSE ADDED\nCourse: ${row[0]}\nTerm: ${row[1]}\nCredits: ${row[2]}\nGrade: ${row[3]}`,
           );
-          logInfo(`Key: ${JSON.stringify(key)}`);
-          logInfo(`New Grade: ${JSON.stringify(newGrade)}`);
         } else {
           const oldRow = oldMap.get(key);
           const oldGrade = oldRow[3];
