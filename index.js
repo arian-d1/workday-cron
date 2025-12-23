@@ -1,16 +1,20 @@
 import puppeteer from "puppeteer";
 import fs from "fs";
 import path from "path";
-import { timeout } from "cron";
 import { sendEmail } from "./mailer.js";
 import cron from "node-cron";
-import chalk from "chalk";
 import { logSuccess, logInfo, logError, logWarning } from "./logging.js";
+import dotenv from "dotenv"
+
+dotenv.config()
 
 const WORKDAY_URL = "https://myworkday.ubc.ca";
 const COOKIES_FILE = path.resolve("./cookies.json");
 const SESSION_DIR = path.resolve("./session");
 const OLD_DATA_FILE = path.resolve("./oldData.csv");
+
+const USERNAMESELECTOR = '#username';
+const PASSWORDSELECTOR = '#password';
 
 const WELCOMEID = '[data-automation-id="pex-welcome-greeting"]';
 const ACADEMICSBUTTONID = '[aria-label="Academics"]';
@@ -23,6 +27,7 @@ const OKBUTTONID = '[data-automation-id="wd-CommandButton_uic_okButton"]';
 const GRADETABLEID = '[data-testid="table"]';
 
 const TIMEOUT = 100000;
+const {CWL, CWLPW} = process.env;
 
 function arrayToCSV(data) {
   return data
@@ -50,6 +55,8 @@ async function clickButton(page, buttonID, description = "") {
   try {
     logInfo(`Waiting for ${description || buttonID}...`);
     await page.waitForSelector(buttonID, { visible: true, timeout: TIMEOUT });
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    await delay(3000);
     await page.click(buttonID);
     logSuccess(`${description || buttonID} clicked`);
   } catch (err) {
@@ -58,9 +65,36 @@ async function clickButton(page, buttonID, description = "") {
   }
 }
 
+async function isLoggedOut(page) {
+    let res = await page.$(USERNAMESELECTOR)
+    return res || false;
+}
+
+async function login(page, message = "") {
+    try {
+        await page.waitForSelector(USERNAMESELECTOR, { visible: true });
+        await page.waitForSelector(PASSWORDSELECTOR, { visible: true });
+        await page.type(USERNAMESELECTOR, CWL);
+        await page.type(PASSWORDSELECTOR, CWLPW);
+        await page.keyboard.press("Enter");
+
+        await page.waitForSelector(WELCOMEID, {
+            visible: true,
+            timeout: TIMEOUT,
+          });
+
+        const cookies = await page.cookies();
+        fs.writeFileSync(COOKIES_FILE, JSON.stringify(cookies, null, 2))    
+        logSuccess(message);
+        
+    } catch (err) {
+        throw(err);
+    }
+}
+
 async function main() {
   const browser = await puppeteer.launch({
-    headless: fs.existsSync(COOKIES_FILE),
+    headless: true,
     userDataDir: SESSION_DIR,
     defaultViewport: null,
   });
@@ -72,18 +106,20 @@ async function main() {
       logInfo("Loading saved cookies...");
       const cookies = JSON.parse(fs.readFileSync(COOKIES_FILE));
       await page.setCookie(...cookies);
+      await page.goto(WORKDAY_URL, { waitUntil: "networkidle2" });
 
-      await page.goto(WORKDAY_URL, { waitUntil: "networkidle2" });
-      logSuccess("Logged in automatically using saved cookies");
+      if (await isLoggedOut(page)) {
+        logWarning("Cookies expired. Re-logging in...");
+        await login(page, "Cookies refreshed after login.");
+      } else {
+        logSuccess("Logged in automatically using saved cookies.");
+      }
     } else {
-      logWarning("No cookies found. Manual login required.");
+      logWarning("No cookies found... Logging in");
       await page.goto(WORKDAY_URL, { waitUntil: "networkidle2" });
-      await page.waitForSelector(WELCOMEID, { visible: true });
-      logInfo("Login detected, saving cookies...");
-      const cookies = await page.cookies();
-      fs.writeFileSync(COOKIES_FILE, JSON.stringify(cookies, null, 2));
-      logSuccess(`Cookies saved to ${COOKIES_FILE}`);
+      await login(page, `Cookies saved to ${COOKIES_FILE}`)
     }
+
     await clickButton(page, ACADEMICSBUTTONID, "Academics Button");
     await page.waitForSelector(ACADEMICPROGRESSID, { visible: true });
     logInfo("Navigating to Academic Progress...");
@@ -165,20 +201,13 @@ async function main() {
     fs.writeFileSync(OLD_DATA_FILE, newCSV, "utf-8");
     logInfo(`${OLD_DATA_FILE} updated`);
   } catch (err) {
-    logError(`Main process failed: ${err.message}`);
+    throw(err);
   } finally {
     await browser.close();
     logInfo("Browser closed");
   }
 }
 
-// Uncomment this to local run the cron as a script
-// cron.schedule("*/5 * * * *", async () => {
-//   logInfo("Running Workday grade check...");
-//   await main();
-// });
-
-await main();
 
 // (5 MINS) (EVERY HR) (EVERY DAY OF MONTH) (EVERY MONTH) (EVERY DAY OF WEEK)
 logInfo(`Scheduler started at ${new Date().toLocaleTimeString()}`);
