@@ -2,7 +2,21 @@
 
 This script automatically checks UBC Workday grades and sends an email if there are any updates.
 
----
+## Quick start
+```
+cd ~/workday-cron
+touch .env // Fill it in
+npm install
+node index.js
+```
+## About .env
+- Fields required for email sending
+    - USER_EMAIL= Email to send FROM 
+    - USER_PASS= Google App Password for USER_EMAIL
+    - USER_TO= Email to send TO
+- Fields required to log in
+    - CWL = your cwl
+    - CWLPW = your password
 
 ## Running in a Terminal as a CRON job
 
