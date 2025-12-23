@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "npx prettier --write \"**/*.{js,json}\" && node index.js"
+    "start": "npx prettier --write \"*.{js,json}\" && node index.js"
   },
   "keywords": [],
   "author": "",
